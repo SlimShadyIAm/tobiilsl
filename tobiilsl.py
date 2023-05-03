@@ -15,7 +15,10 @@ license_file = "license_file"
 # Preface here
 #
 # from psychopy import prefs, visual, core, event, monitors, tools, logging
+import datetime
+import json
 import numpy as np
+import simplejson
 import tobii_research as tr
 import time
 import random
@@ -91,6 +94,8 @@ def unpack_gaze_data(gaze_data):
 last_report = 0
 N = 0
 
+gaze_datas = set()
+
 def gaze_data_callback(gaze_data):
     '''send gaze data'''
 
@@ -119,8 +124,7 @@ def gaze_data_callback(gaze_data):
 
     system_time_stamp
     '''
-
-
+    gaze_datas.add(json.dumps(gaze_data))
     # for k in sorted(gaze_data.keys()):
     #     print(' ' + k + ': ' +  str(gaze_data[k]))
 
@@ -202,10 +206,22 @@ try:
         if halted:
             break
 
-        # print(lsl.local_clock())
-
-except:
+except KeyboardInterrupt:
     print("Halting...")
+    # generate filename based on date and time
+    date = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    filename = os.path.join("data", f"{date}.json")
+    print(f"Outputting to file {filename}...")
+    # create data directory if it doesn't exist
+    if not os.path.exists("data"):
+        os.makedirs("data")
+    # write data to file
+    with open(filename, "w") as f:
+        gaze_datas = list(gaze_datas)
+        gaze_datas = [json.loads(data) for data in gaze_datas]
+        gaze_datas.sort(key=lambda data: data['system_time_stamp'])
+        f.write(simplejson.dumps(gaze_datas, ignore_nan=True))
+    print("Done.")
 
 print("terminating tracking now")
 end_gaze_tracking()
